@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { ALL_MOCK_PLAYERS } from '@/data/mock-players';
+import { usePlayersData } from '@/context/PlayersContext';
 import { filterPlayers, sortPlayers, type SortField } from '@/lib/utils';
 import FilterBar from '@/components/dashboard/FilterBar';
 import PlayerTable from '@/components/dashboard/PlayerTable';
 import Pagination from '@/components/dashboard/Pagination';
 import QuickStats from '@/components/dashboard/QuickStats';
+import { LoadingSpinner, ErrorState } from '@/components/ui/LoadingState';
 
 const DEFAULT_FILTERS = {
   search: '',
@@ -22,6 +23,7 @@ const DEFAULT_FILTERS = {
 const PAGE_SIZE = 50;
 
 export default function DashboardPage() {
+  const { players: allPlayers, loading, error } = usePlayersData();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [sortField, setSortField] = useState<SortField>('points');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -48,7 +50,7 @@ export default function DashboardPage() {
   }, [sortField]);
 
   const filteredPlayers = useMemo(() => {
-    return filterPlayers(ALL_MOCK_PLAYERS, {
+    return filterPlayers(allPlayers, {
       search: filters.search,
       league: filters.league,
       position: filters.position,
@@ -58,7 +60,7 @@ export default function DashboardPage() {
       ageMin: filters.ageMin ? parseInt(filters.ageMin) : undefined,
       ageMax: filters.ageMax ? parseInt(filters.ageMax) : undefined,
     });
-  }, [filters]);
+  }, [filters, allPlayers]);
 
   const sortedPlayers = useMemo(() => {
     return sortPlayers(filteredPlayers, sortField, sortDir);
@@ -66,6 +68,9 @@ export default function DashboardPage() {
 
   const totalPages = Math.ceil(sortedPlayers.length / PAGE_SIZE);
   const pageData = sortedPlayers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-4 max-w-[1600px]">
@@ -85,7 +90,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick stats */}
-      <QuickStats players={ALL_MOCK_PLAYERS} />
+      <QuickStats players={allPlayers} />
 
       {/* Filters */}
       <FilterBar
@@ -93,7 +98,7 @@ export default function DashboardPage() {
         onChange={handleFilterChange}
         onReset={handleReset}
         playerCount={filteredPlayers.length}
-        totalCount={ALL_MOCK_PLAYERS.length}
+        totalCount={allPlayers.length}
       />
 
       {/* Player table */}

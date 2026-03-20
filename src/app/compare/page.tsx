@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ALL_MOCK_PLAYERS } from '@/data/mock-players';
+import { usePlayersData } from '@/context/PlayersContext';
 import { flagEmoji, positionColor, formatPlusMinus, getPercentileColor } from '@/lib/utils';
 import PercentileBar from '@/components/ui/PercentileBar';
 import { PlayerSearchResult } from '@/types';
+import { LoadingSpinner, ErrorState } from '@/components/ui/LoadingState';
 
 const MAX_PLAYERS = 4;
 
@@ -57,6 +58,7 @@ function getBestIndex(players: PlayerSearchResult[], key: StatKey): number {
 }
 
 export default function ComparePage() {
+  const { players: allPlayers, loading, error } = usePlayersData();
   const [selectedPlayers, setSelectedPlayers] = useState<PlayerSearchResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -76,7 +78,7 @@ export default function ComparePage() {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
     const selectedIds = new Set(selectedPlayers.map((p: PlayerSearchResult) => p.id));
-    return ALL_MOCK_PLAYERS
+    return allPlayers
       .filter((p) =>
         !selectedIds.has(p.id) &&
         (p.fullName.toLowerCase().includes(q) ||
@@ -103,6 +105,9 @@ export default function ComparePage() {
 
   const hasPlayers = selectedPlayers.length > 0;
   const canCompare = selectedPlayers.length >= 2;
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div className="min-h-screen p-6 max-w-7xl mx-auto">

@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ALL_MOCK_PLAYERS } from '@/data/mock-players';
+import { usePlayersData } from '@/context/PlayersContext';
 import { LEAGUES } from '@/lib/leagues';
 import type { PlayerSearchResult, DraftStatus } from '@/types';
+import { LoadingSpinner, ErrorState } from '@/components/ui/LoadingState';
 
 // ── Helpers ──
 
@@ -81,7 +82,7 @@ function SectionCard({ title, subtitle, children }: { title: string; subtitle?: 
 // ── Main Component ──
 
 export default function AnalyticsPage() {
-  const players = ALL_MOCK_PLAYERS;
+  const { players, loading, error } = usePlayersData();
 
   // ── League Breakdown ──
   const leagueStats = useMemo(() => {
@@ -182,12 +183,15 @@ export default function AnalyticsPage() {
 
   const maxDraftCount = useMemo(() => Math.max(...draftStats.map(d => d.count), 1), [draftStats]);
 
-  // ── Top Risers (mock trending) ──
+  // ── Top Risers ──
   const topRisers = useMemo(() => {
     const skaters = players.filter(p => p.position !== 'G' && p.pointsPerGame >= 1.0);
     const sorted = [...skaters].sort((a, b) => b.pointsPerGame - a.pointsPerGame);
     return sorted.slice(0, 10);
   }, [players]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-4 max-w-[1600px]">

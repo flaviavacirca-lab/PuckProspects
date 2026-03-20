@@ -3,12 +3,15 @@
 import { useParams } from 'next/navigation';
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { ALL_MOCK_PLAYERS } from '@/data/mock-players';
+import { usePlayersData } from '@/context/PlayersContext';
 import { flagEmoji, positionColor, formatPlusMinus, draftStatusLabel, getPercentileColor, getPercentileTextColor } from '@/lib/utils';
 import PercentileBar from '@/components/ui/PercentileBar';
+import { LoadingSpinner, ErrorState } from '@/components/ui/LoadingState';
+
+import { PlayerSearchResult } from '@/types';
 
 // Generate mock historical seasons for a player
-function generateSeasonHistory(player: typeof ALL_MOCK_PLAYERS[0]) {
+function generateSeasonHistory(player: PlayerSearchResult) {
   const seasons = [];
   const currentPts = player.points;
   const currentGP = player.gamesPlayed;
@@ -36,18 +39,22 @@ function generateSeasonHistory(player: typeof ALL_MOCK_PLAYERS[0]) {
 }
 
 // Generate similar players
-function findSimilarPlayers(player: typeof ALL_MOCK_PLAYERS[0]) {
-  return ALL_MOCK_PLAYERS
+function findSimilarPlayers(player: PlayerSearchResult, allPlayers: PlayerSearchResult[]) {
+  return allPlayers
     .filter(p => p.id !== player.id && p.position === player.position && Math.abs(p.age - player.age) <= 2)
     .sort((a, b) => Math.abs(a.pointsPerGame - player.pointsPerGame) - Math.abs(b.pointsPerGame - player.pointsPerGame))
     .slice(0, 5);
 }
 
 export default function PlayerProfile() {
+  const { players: allPlayers, loading, error } = usePlayersData();
   const params = useParams();
   const playerId = parseInt(params.id as string);
 
-  const player = useMemo(() => ALL_MOCK_PLAYERS.find(p => p.id === playerId), [playerId]);
+  const player = useMemo(() => allPlayers.find(p => p.id === playerId), [playerId, allPlayers]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorState message={error} />;
 
   if (!player) {
     return (
@@ -61,7 +68,7 @@ export default function PlayerProfile() {
   }
 
   const seasons = generateSeasonHistory(player);
-  const similar = findSimilarPlayers(player);
+  const similar = findSimilarPlayers(player, allPlayers);
 
   return (
     <div className="max-w-[1200px] space-y-6">

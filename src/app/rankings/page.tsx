@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ALL_MOCK_PLAYERS } from '@/data/mock-players';
+import { usePlayersData } from '@/context/PlayersContext';
 import {
   flagEmoji,
   positionColor,
@@ -10,6 +10,7 @@ import {
   getPercentileTextColor,
 } from '@/lib/utils';
 import { PlayerSearchResult, Position } from '@/types';
+import { LoadingSpinner, ErrorState } from '@/components/ui/LoadingState';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -192,11 +193,11 @@ function RankingTable({
 // Tab content components
 // ---------------------------------------------------------------------------
 
-function OverallTab() {
+function OverallTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
   const top50 = useMemo(() => {
-    const skaters = ALL_MOCK_PLAYERS.filter((p) => p.position !== 'G');
+    const skaters = allPlayers.filter((p) => p.position !== 'G');
     return [...skaters].sort((a, b) => b.pointsPerGame - a.pointsPerGame).slice(0, 50);
-  }, []);
+  }, [allPlayers]);
 
   return (
     <div className="card p-0 overflow-hidden">
@@ -213,19 +214,19 @@ function OverallTab() {
   );
 }
 
-function ByPositionTab() {
+function ByPositionTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
   const [posTab, setPosTab] = useState<PositionTab>('C');
 
   const lists = useMemo(() => {
     const result: Record<PositionTab, PlayerSearchResult[]> = { C: [], LW: [], RW: [], D: [] };
     for (const pos of POSITION_TABS) {
-      result[pos] = [...ALL_MOCK_PLAYERS]
+      result[pos] = [...allPlayers]
         .filter((p) => p.position === pos)
         .sort((a, b) => b.pointsPerGame - a.pointsPerGame)
         .slice(0, 20);
     }
     return result;
-  }, []);
+  }, [allPlayers]);
 
   return (
     <div className="space-y-4">
@@ -259,13 +260,13 @@ function ByPositionTab() {
   );
 }
 
-function AgeAdjustedTab() {
+function AgeAdjustedTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
   const ranked = useMemo(() => {
-    const skaters = ALL_MOCK_PLAYERS.filter((p) => p.position !== 'G');
+    const skaters = allPlayers.filter((p) => p.position !== 'G');
     return [...skaters]
       .sort((a, b) => ageAdjustedScore(b) - ageAdjustedScore(a))
       .slice(0, 50);
-  }, []);
+  }, [allPlayers]);
 
   return (
     <div className="space-y-4">
@@ -303,12 +304,12 @@ function AgeAdjustedTab() {
   );
 }
 
-function DraftEligibleTab() {
+function DraftEligibleTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
   const eligible = useMemo(() => {
-    return [...ALL_MOCK_PLAYERS]
+    return [...allPlayers]
       .filter((p) => p.draftStatus === 'draft_eligible')
       .sort((a, b) => b.points - a.points);
-  }, []);
+  }, [allPlayers]);
 
   return (
     <div className="card p-0 overflow-hidden">
@@ -325,11 +326,11 @@ function DraftEligibleTab() {
   );
 }
 
-function NhlAffiliatedTab() {
+function NhlAffiliatedTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const grouped = useMemo(() => {
-    const drafted = ALL_MOCK_PLAYERS.filter(
+    const drafted = allPlayers.filter(
       (p) => p.draftStatus === 'drafted' && p.nhlRightsHolder
     );
     const groups: Record<string, PlayerSearchResult[]> = {};
@@ -396,7 +397,11 @@ function NhlAffiliatedTab() {
 // ---------------------------------------------------------------------------
 
 export default function RankingsPage() {
+  const { players: allPlayers, loading, error } = usePlayersData();
   const [activeTab, setActiveTab] = useState<RankingTab>('overall');
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6 max-w-[1600px]">
@@ -426,11 +431,11 @@ export default function RankingsPage() {
       </div>
 
       {/* Tab content */}
-      {activeTab === 'overall' && <OverallTab />}
-      {activeTab === 'position' && <ByPositionTab />}
-      {activeTab === 'age_adjusted' && <AgeAdjustedTab />}
-      {activeTab === 'draft_eligible' && <DraftEligibleTab />}
-      {activeTab === 'nhl_affiliated' && <NhlAffiliatedTab />}
+      {activeTab === 'overall' && <OverallTab allPlayers={allPlayers} />}
+      {activeTab === 'position' && <ByPositionTab allPlayers={allPlayers} />}
+      {activeTab === 'age_adjusted' && <AgeAdjustedTab allPlayers={allPlayers} />}
+      {activeTab === 'draft_eligible' && <DraftEligibleTab allPlayers={allPlayers} />}
+      {activeTab === 'nhl_affiliated' && <NhlAffiliatedTab allPlayers={allPlayers} />}
     </div>
   );
 }
