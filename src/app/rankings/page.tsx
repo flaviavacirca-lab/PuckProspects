@@ -1,441 +1,161 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import Link from 'next/link';
+import { useState, useMemo, useCallback } from 'react';
 import { usePlayersData } from '@/context/PlayersContext';
-import {
-  flagEmoji,
-  positionColor,
-  getPercentileColor,
-  getPercentileTextColor,
-} from '@/lib/utils';
-import { PlayerSearchResult, Position } from '@/types';
+import { filterPlayers, sortPlayers, type SortField } from '@/lib/utils';
+import FilterBar from '@/components/dashboard/FilterBar';
+import PlayerTable from '@/components/dashboard/PlayerTable';
+import PlayerCard from '@/components/ui/PlayerCard';
+import Pagination from '@/components/dashboard/Pagination';
 import { LoadingSpinner, ErrorState } from '@/components/ui/LoadingState';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+const DEFAULT_FILTERS = {
+  search: '',
+  league: 'all',
+  position: 'all',
+  nationality: 'all',
+  draftStatus: 'all',
+  nhlTeam: 'all',
+  ageMin: '',
+  ageMax: '',
+};
 
-type RankingTab = 'overall' | 'position' | 'age_adjusted' | 'draft_eligible' | 'nhl_affiliated';
-type PositionTab = 'C' | 'LW' | 'RW' | 'D';
-
-const RANKING_TABS: { key: RankingTab; label: string }[] = [
-  { key: 'overall', label: 'Overall' },
-  { key: 'position', label: 'By Position' },
-  { key: 'age_adjusted', label: 'Age-Adjusted' },
-  { key: 'draft_eligible', label: 'Draft Eligible' },
-  { key: 'nhl_affiliated', label: 'NHL Affiliated' },
-];
-
-const POSITION_TABS: PositionTab[] = ['C', 'LW', 'RW', 'D'];
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Age-adjustment factor: younger players get a boost. */
-function ageFactor(age: number): number {
-  if (age <= 16) return 1.35;
-  if (age <= 17) return 1.25;
-  if (age <= 18) return 1.15;
-  if (age <= 19) return 1.05;
-  if (age <= 20) return 1.0;
-  if (age <= 21) return 0.95;
-  if (age <= 22) return 0.90;
-  return 0.85;
-}
-
-function ageAdjustedScore(p: PlayerSearchResult): number {
-  return Math.round(p.pointsPerGame * ageFactor(p.age) * 100) / 100;
-}
-
-// ---------------------------------------------------------------------------
-// Shared row component
-// ---------------------------------------------------------------------------
-
-function RankingRow({
-  rank,
-  player,
-  extraMetric,
-}: {
-  rank: number;
-  player: PlayerSearchResult;
-  extraMetric?: { label: string; value: string };
-}) {
-  return (
-    <tr>
-      {/* Rank */}
-      <td className="text-right font-mono text-slate-500 pr-4 w-10">{rank}</td>
-
-      {/* Player name */}
-      <td>
-        <Link
-          href={`/players/${player.id}`}
-          className="font-medium text-slate-200 hover:text-blue-400 transition-colors"
-        >
-          {player.fullName}
-        </Link>
-      </td>
-
-      {/* Position */}
-      <td>
-        <span
-          className={`badge badge-position text-[10px] ${positionColor(player.position)}`}
-        >
-          {player.position}
-        </span>
-      </td>
-
-      {/* Age */}
-      <td className="text-slate-400 text-sm">{player.age}</td>
-
-      {/* Nationality */}
-      <td className="text-sm" title={player.nationality}>
-        {flagEmoji(player.nationality)}
-      </td>
-
-      {/* League */}
-      <td>
-        <span className="badge badge-league text-[10px]">{player.leagueName}</span>
-      </td>
-
-      {/* Team */}
-      <td className="text-sm text-slate-400 max-w-[160px] truncate">{player.teamName}</td>
-
-      {/* Core stats */}
-      <td className="text-right font-mono text-slate-400">{player.gamesPlayed}</td>
-      <td className="text-right font-mono text-slate-300">{player.goals}</td>
-      <td className="text-right font-mono text-slate-300">{player.assists}</td>
-      <td className="text-right font-mono font-bold text-slate-100">{player.points}</td>
-      <td className="text-right font-mono text-blue-400">{player.pointsPerGame.toFixed(2)}</td>
-
-      {/* Percentile dots */}
-      <td>
-        <div className="flex items-center gap-1.5 justify-end">
-          <span
-            className={`w-2 h-2 rounded-full ${getPercentileColor(player.leaguePercentile)}`}
-            title={`League: ${player.leaguePercentile ?? '-'}th`}
-          />
-          <span
-            className={`w-2 h-2 rounded-full ${getPercentileColor(player.agePercentile)}`}
-            title={`Age: ${player.agePercentile ?? '-'}th`}
-          />
-        </div>
-      </td>
-
-      {/* Optional extra metric */}
-      {extraMetric && (
-        <td className="text-right font-mono text-emerald-400 font-semibold">
-          {extraMetric.value}
-        </td>
-      )}
-    </tr>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Shared table wrapper
-// ---------------------------------------------------------------------------
-
-function RankingTable({
-  players,
-  extraHeader,
-  extraMetricFn,
-}: {
-  players: PlayerSearchResult[];
-  extraHeader?: string;
-  extraMetricFn?: (p: PlayerSearchResult) => { label: string; value: string };
-}) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="stat-table">
-        <thead>
-          <tr>
-            <th className="text-right w-10">#</th>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>Age</th>
-            <th></th>
-            <th>League</th>
-            <th>Team</th>
-            <th className="text-right">GP</th>
-            <th className="text-right">G</th>
-            <th className="text-right">A</th>
-            <th className="text-right">P</th>
-            <th className="text-right">PPG</th>
-            <th className="text-right">Pctl</th>
-            {extraHeader && <th className="text-right">{extraHeader}</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {players.map((p, i) => (
-            <RankingRow
-              key={p.id}
-              rank={i + 1}
-              player={p}
-              extraMetric={extraMetricFn ? extraMetricFn(p) : undefined}
-            />
-          ))}
-          {players.length === 0 && (
-            <tr>
-              <td colSpan={extraHeader ? 14 : 13} className="text-center py-8 text-slate-500">
-                No players found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tab content components
-// ---------------------------------------------------------------------------
-
-function OverallTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
-  const top50 = useMemo(() => {
-    const skaters = allPlayers.filter((p) => p.position !== 'G');
-    return [...skaters].sort((a, b) => b.pointsPerGame - a.pointsPerGame).slice(0, 50);
-  }, [allPlayers]);
-
-  return (
-    <div className="card p-0 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700/40">
-        <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-          Top 50 Prospects by Points Per Game
-        </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          All leagues, skaters only — 2025-26 season
-        </p>
-      </div>
-      <RankingTable players={top50} />
-    </div>
-  );
-}
-
-function ByPositionTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
-  const [posTab, setPosTab] = useState<PositionTab>('C');
-
-  const lists = useMemo(() => {
-    const result: Record<PositionTab, PlayerSearchResult[]> = { C: [], LW: [], RW: [], D: [] };
-    for (const pos of POSITION_TABS) {
-      result[pos] = [...allPlayers]
-        .filter((p) => p.position === pos)
-        .sort((a, b) => b.pointsPerGame - a.pointsPerGame)
-        .slice(0, 20);
-    }
-    return result;
-  }, [allPlayers]);
-
-  return (
-    <div className="space-y-4">
-      {/* Position sub-tabs */}
-      <div className="flex gap-1 bg-slate-800/40 rounded-lg p-1 w-fit">
-        {POSITION_TABS.map((pos) => (
-          <button
-            key={pos}
-            onClick={() => setPosTab(pos)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              posTab === pos
-                ? 'bg-slate-700 text-slate-100 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/40'
-            }`}
-          >
-            <span className={positionColor(pos)}>{pos}</span>
-            <span className="text-slate-500 text-xs ml-1.5">({lists[pos].length})</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="card p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/40">
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-            Top 20 — {posTab === 'C' ? 'Centers' : posTab === 'LW' ? 'Left Wings' : posTab === 'RW' ? 'Right Wings' : 'Defensemen'}
-          </h2>
-        </div>
-        <RankingTable players={lists[posTab]} />
-      </div>
-    </div>
-  );
-}
-
-function AgeAdjustedTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
-  const ranked = useMemo(() => {
-    const skaters = allPlayers.filter((p) => p.position !== 'G');
-    return [...skaters]
-      .sort((a, b) => ageAdjustedScore(b) - ageAdjustedScore(a))
-      .slice(0, 50);
-  }, [allPlayers]);
-
-  return (
-    <div className="space-y-4">
-      <div className="card p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm font-bold shrink-0">
-            Adj
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-300">Age-Adjusted Scoring</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              PPG multiplied by an age factor that rewards younger players.
-              A 17-year-old gets a 1.25x multiplier while a 22-year-old gets 0.90x.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="card p-0 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/40">
-          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-            Top 50 by Age-Adjusted Score
-          </h2>
-        </div>
-        <RankingTable
-          players={ranked}
-          extraHeader="Adj"
-          extraMetricFn={(p) => ({
-            label: 'Adj',
-            value: ageAdjustedScore(p).toFixed(2),
-          })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function DraftEligibleTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
-  const eligible = useMemo(() => {
-    return [...allPlayers]
-      .filter((p) => p.draftStatus === 'draft_eligible')
-      .sort((a, b) => b.points - a.points);
-  }, [allPlayers]);
-
-  return (
-    <div className="card p-0 overflow-hidden">
-      <div className="px-5 py-4 border-b border-slate-700/40">
-        <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-          Draft Eligible Prospects
-        </h2>
-        <p className="text-xs text-slate-500 mt-1">
-          {eligible.length} players eligible for the upcoming draft, sorted by total points
-        </p>
-      </div>
-      <RankingTable players={eligible} />
-    </div>
-  );
-}
-
-function NhlAffiliatedTab({ allPlayers }: { allPlayers: PlayerSearchResult[] }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-
-  const grouped = useMemo(() => {
-    const drafted = allPlayers.filter(
-      (p) => p.draftStatus === 'drafted' && p.nhlRightsHolder
-    );
-    const groups: Record<string, PlayerSearchResult[]> = {};
-    for (const p of drafted) {
-      const team = p.nhlRightsHolder!;
-      if (!groups[team]) groups[team] = [];
-      groups[team].push(p);
-    }
-    // Sort each group by PPG descending
-    for (const team of Object.keys(groups)) {
-      groups[team].sort((a, b) => b.pointsPerGame - a.pointsPerGame);
-    }
-    return groups;
-  }, []);
-
-  const sortedTeams = useMemo(() => {
-    return Object.keys(grouped).sort((a, b) => a.localeCompare(b));
-  }, [grouped]);
-
-  const toggle = (team: string) => {
-    setExpanded((prev) => ({ ...prev, [team]: !prev[team] }));
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="text-xs text-slate-500 mb-2">
-        {sortedTeams.length} NHL organizations with prospects in the system.
-        Click a team to expand.
-      </div>
-      {sortedTeams.map((team) => {
-        const players = grouped[team];
-        const isOpen = expanded[team] ?? false;
-        return (
-          <div key={team} className="card overflow-hidden">
-            <button
-              onClick={() => toggle(team)}
-              className="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-800/40 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="badge badge-nhl text-xs">{team}</span>
-                <span className="text-xs text-slate-500">
-                  {players.length} prospect{players.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <span className="text-slate-500 text-sm">
-                {isOpen ? '−' : '+'}
-              </span>
-            </button>
-
-            {isOpen && (
-              <div className="border-t border-slate-700/40">
-                <RankingTable players={players} />
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
+const PAGE_SIZE = 48;
 
 export default function RankingsPage() {
   const { players: allPlayers, loading, error } = usePlayersData();
-  const [activeTab, setActiveTab] = useState<RankingTab>('overall');
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [sortField, setSortField] = useState<SortField>('points');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
+  const [view, setView] = useState<'cards' | 'table'>('cards');
+
+  const handleFilterChange = useCallback((key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(1);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setPage(1);
+  }, []);
+
+  const handleSort = useCallback((field: SortField) => {
+    if (field === sortField) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+    setPage(1);
+  }, [sortField]);
+
+  const filteredPlayers = useMemo(() => {
+    return filterPlayers(allPlayers, {
+      search: filters.search,
+      league: filters.league,
+      position: filters.position,
+      nationality: filters.nationality,
+      draftStatus: filters.draftStatus,
+      nhlTeam: filters.nhlTeam,
+      ageMin: filters.ageMin ? parseInt(filters.ageMin) : undefined,
+      ageMax: filters.ageMax ? parseInt(filters.ageMax) : undefined,
+    });
+  }, [filters, allPlayers]);
+
+  const sortedPlayers = useMemo(() => {
+    return sortPlayers(filteredPlayers, sortField, sortDir);
+  }, [filteredPlayers, sortField, sortDir]);
+
+  const totalPages = Math.ceil(sortedPlayers.length / PAGE_SIZE);
+  const pageData = sortedPlayers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} />;
 
   return (
-    <div className="space-y-6 max-w-[1600px]">
+    <div className="space-y-4 max-w-[1600px]">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100">Prospect Rankings</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Multi-view prospect rankings across all tracked leagues — 2025-26 season
-        </p>
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100">Rankings</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            All prospects — sortable, filterable, searchable
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <ViewToggle view={view} onChange={setView} />
+        </div>
       </div>
 
-      {/* Tab navigation */}
-      <div className="flex gap-1 bg-slate-800/40 rounded-lg p-1 overflow-x-auto">
-        {RANKING_TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-              activeTab === tab.key
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/40'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Filters */}
+      <FilterBar
+        filters={filters}
+        onChange={handleFilterChange}
+        onReset={handleReset}
+        playerCount={filteredPlayers.length}
+        totalCount={allPlayers.length}
+      />
 
-      {/* Tab content */}
-      {activeTab === 'overall' && <OverallTab allPlayers={allPlayers} />}
-      {activeTab === 'position' && <ByPositionTab allPlayers={allPlayers} />}
-      {activeTab === 'age_adjusted' && <AgeAdjustedTab allPlayers={allPlayers} />}
-      {activeTab === 'draft_eligible' && <DraftEligibleTab allPlayers={allPlayers} />}
-      {activeTab === 'nhl_affiliated' && <NhlAffiliatedTab allPlayers={allPlayers} />}
+      {/* Content */}
+      {view === 'cards' ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+          {pageData.map((p, idx) => (
+            <PlayerCard key={p.id} player={p} rank={(page - 1) * PAGE_SIZE + idx + 1} />
+          ))}
+        </div>
+      ) : (
+        <PlayerTable
+          players={pageData}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={handleSort}
+          page={page}
+          pageSize={PAGE_SIZE}
+        />
+      )}
+
+      {/* Pagination */}
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
+  );
+}
+
+function ViewToggle({ view, onChange }: { view: 'cards' | 'table'; onChange: (v: 'cards' | 'table') => void }) {
+  return (
+    <div className="flex items-center bg-slate-800/60 border border-slate-700/40 rounded-lg p-0.5">
+      <button
+        onClick={() => onChange('cards')}
+        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          view === 'cards' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        <GridIcon />
+      </button>
+      <button
+        onClick={() => onChange('table')}
+        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          view === 'table' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        <ListIcon />
+      </button>
+    </div>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
   );
 }
