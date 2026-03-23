@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllPlayers } from '@/lib/scraper';
+import { getPlayerRepository } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
-  let players = await getAllPlayers();
+  const repo = getPlayerRepository();
+  let players = await repo.getAllPlayers();
 
   // Filters
   const league = params.get('league');

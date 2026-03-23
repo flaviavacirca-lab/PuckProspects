@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { LEAGUES } from '@/lib/leagues';
-import { getAllPlayers } from '@/lib/scraper';
+import { getPlayerRepository } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const players = await getAllPlayers();
+  const repo = getPlayerRepository();
+  const players = await repo.getAllPlayers();
 
   const leagueStats = LEAGUES.map(league => {
     const leaguePlayers = players.filter(p => p.leagueCode === league.code);

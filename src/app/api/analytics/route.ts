@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getAllPlayers } from '@/lib/scraper';
+import { getPlayerRepository } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const players = await getAllPlayers();
+  const repo = getPlayerRepository();
+  const players = await repo.getAllPlayers();
 
   // League breakdown
   const byLeague = new Map<string, { name: string; count: number; totalPpg: number }>();
