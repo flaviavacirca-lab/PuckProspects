@@ -10,7 +10,7 @@ export default function PercentileBar({ value, label, showValue = true }: Percen
   const pct = value ?? 0;
   return (
     <div className="flex items-center gap-2">
-      {label && <span className="text-xs text-slate-500 w-8">{label}</span>}
+      {label && <span className="text-xs text-gray-500 w-8">{label}</span>}
       <div className="percentile-bar flex-1 min-w-[60px]">
         <div
           className={`percentile-fill ${getPercentileColor(value)}`}

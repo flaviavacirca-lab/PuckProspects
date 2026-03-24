@@ -47,12 +47,12 @@ export default function PlayerTable({ players, sortField, sortDir, onSort, page,
                 <th
                   key={col.key}
                   onClick={() => col.sortable && onSort(col.key as SortField)}
-                  className={`${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.sortable ? 'cursor-pointer hover:text-slate-200' : ''}`}
+                  className={`${col.align === 'right' ? 'text-right' : col.align === 'center' ? 'text-center' : 'text-left'} ${col.sortable ? 'cursor-pointer hover:text-gray-900' : ''}`}
                 >
                   <span className="inline-flex items-center gap-1">
                     {col.label}
                     {col.sortable && sortField === col.key && (
-                      <span className="text-blue-400">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                      <span className="text-blue-600">{sortDir === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </span>
                 </th>
@@ -62,13 +62,13 @@ export default function PlayerTable({ players, sortField, sortDir, onSort, page,
           <tbody>
             {players.map((player, idx) => (
               <tr key={player.id}>
-                <td className="text-slate-500 font-mono text-xs">{start + idx + 1}</td>
+                <td className="text-gray-400 font-mono text-xs">{start + idx + 1}</td>
                 <td>
                   <Link href={`/players/${player.id}`} className="group flex items-center gap-2">
                     <span className={`text-xs font-bold w-7 text-center ${positionColor(player.position)}`}>
                       {player.position}
                     </span>
-                    <span className="font-medium text-slate-100 group-hover:text-blue-400 transition-colors">
+                    <span className="font-medium text-gray-800 group-hover:text-blue-600 transition-colors">
                       {player.fullName}
                     </span>
                   </Link>
@@ -80,14 +80,14 @@ export default function PlayerTable({ players, sortField, sortDir, onSort, page,
                 <td>
                   <span className="badge badge-league">{player.leagueName}</span>
                 </td>
-                <td className="text-slate-300 text-xs">{player.teamName}</td>
+                <td className="text-gray-500 text-xs">{player.teamName}</td>
                 <td className="text-right font-mono">{player.gamesPlayed}</td>
                 <td className="text-right font-mono font-medium">{player.goals}</td>
                 <td className="text-right font-mono">{player.assists}</td>
-                <td className="text-right font-mono font-bold text-slate-100">{player.points}</td>
-                <td className="text-right font-mono text-blue-400 font-medium">{player.pointsPerGame.toFixed(2)}</td>
+                <td className="text-right font-mono font-bold text-gray-900">{player.points}</td>
+                <td className="text-right font-mono text-blue-600 font-medium">{player.pointsPerGame.toFixed(2)}</td>
                 <td className="text-right font-mono">
-                  <span className={player.plusMinus !== null && player.plusMinus > 0 ? 'text-emerald-400' : player.plusMinus !== null && player.plusMinus < 0 ? 'text-red-400' : 'text-slate-400'}>
+                  <span className={player.plusMinus !== null && player.plusMinus > 0 ? 'text-emerald-600' : player.plusMinus !== null && player.plusMinus < 0 ? 'text-red-500' : 'text-gray-400'}>
                     {formatPlusMinus(player.plusMinus)}
                   </span>
                 </td>
@@ -102,7 +102,7 @@ export default function PlayerTable({ players, sortField, sortDir, onSort, page,
                     {draftStatusLabel(player.draftStatus)}
                   </span>
                 </td>
-                <td className="text-xs text-slate-400 max-w-[120px] truncate" title={player.nhlRightsHolder || ''}>
+                <td className="text-xs text-gray-500 max-w-[120px] truncate" title={player.nhlRightsHolder || ''}>
                   {player.nhlRightsHolder || '-'}
                 </td>
               </tr>
@@ -115,14 +115,14 @@ export default function PlayerTable({ players, sortField, sortDir, onSort, page,
 }
 
 function PercentileDot({ value }: { value: number | null }) {
-  if (value === null) return <span className="text-slate-600">-</span>;
+  if (value === null) return <span className="text-gray-300">-</span>;
   return (
     <span className={`inline-flex items-center justify-center w-8 h-5 rounded text-[10px] font-bold ${
-      value >= 90 ? 'bg-emerald-500/20 text-emerald-400' :
-      value >= 75 ? 'bg-blue-500/20 text-blue-400' :
-      value >= 50 ? 'bg-amber-500/20 text-amber-400' :
-      value >= 25 ? 'bg-orange-500/20 text-orange-400' :
-      'bg-red-500/20 text-red-400'
+      value >= 90 ? 'bg-emerald-50 text-emerald-700' :
+      value >= 75 ? 'bg-blue-50 text-blue-700' :
+      value >= 50 ? 'bg-amber-50 text-amber-700' :
+      value >= 25 ? 'bg-orange-50 text-orange-700' :
+      'bg-red-50 text-red-700'
     }`}>
       {value}
     </span>

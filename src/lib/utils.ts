@@ -1,7 +1,7 @@
 import { PlayerSearchResult } from '@/types';
 
 export function getPercentileColor(pct: number | null): string {
-  if (pct === null) return 'bg-slate-600';
+  if (pct === null) return 'bg-gray-200';
   if (pct >= 90) return 'bg-emerald-500';
   if (pct >= 75) return 'bg-blue-500';
   if (pct >= 50) return 'bg-amber-500';
@@ -10,12 +10,12 @@ export function getPercentileColor(pct: number | null): string {
 }
 
 export function getPercentileTextColor(pct: number | null): string {
-  if (pct === null) return 'text-slate-500';
-  if (pct >= 90) return 'text-emerald-400';
-  if (pct >= 75) return 'text-blue-400';
-  if (pct >= 50) return 'text-amber-400';
-  if (pct >= 25) return 'text-orange-400';
-  return 'text-red-400';
+  if (pct === null) return 'text-gray-400';
+  if (pct >= 90) return 'text-emerald-600';
+  if (pct >= 75) return 'text-blue-600';
+  if (pct >= 50) return 'text-amber-600';
+  if (pct >= 25) return 'text-orange-600';
+  return 'text-red-600';
 }
 
 export function formatPlusMinus(val: number | null): string {
@@ -35,12 +35,12 @@ export function flagEmoji(country: string): string {
 
 export function positionColor(pos: string): string {
   switch (pos) {
-    case 'C': return 'text-blue-400';
-    case 'LW': return 'text-emerald-400';
-    case 'RW': return 'text-teal-400';
-    case 'D': return 'text-amber-400';
-    case 'G': return 'text-purple-400';
-    default: return 'text-slate-400';
+    case 'C': return 'text-blue-600';
+    case 'LW': return 'text-emerald-600';
+    case 'RW': return 'text-teal-600';
+    case 'D': return 'text-amber-600';
+    case 'G': return 'text-purple-600';
+    default: return 'text-gray-500';
   }
 }
 

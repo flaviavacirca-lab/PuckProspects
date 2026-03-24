@@ -74,7 +74,7 @@ export default function FilterBar({ filters, onChange, onReset, playerCount, tot
             className="filter-input w-full"
           />
         </div>
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-gray-500">
           {playerCount.toLocaleString()} of {totalCount.toLocaleString()} players
         </div>
         {activeFilterCount > 0 && (
@@ -147,7 +147,7 @@ export default function FilterBar({ filters, onChange, onReset, playerCount, tot
             min={15}
             max={30}
           />
-          <span className="text-slate-600">-</span>
+          <span className="text-gray-400">-</span>
           <input
             type="number"
             value={filters.ageMax}

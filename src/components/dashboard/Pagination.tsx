@@ -37,13 +37,13 @@ export default function Pagination({ page, totalPages, onPageChange }: Paginatio
             className={`w-8 h-8 rounded text-xs font-medium transition-colors ${
               p === page
                 ? 'bg-blue-600 text-white'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
             }`}
           >
             {p}
           </button>
         ) : (
-          <span key={i} className="text-slate-600 px-1">...</span>
+          <span key={i} className="text-gray-400 px-1">...</span>
         )
       )}
       <button

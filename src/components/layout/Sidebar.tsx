@@ -8,33 +8,28 @@ const NAV_ITEMS = [
   { href: '/rankings', label: 'Rankings', icon: TrophyIcon },
   { href: '/compare', label: 'Compare', icon: ScaleIcon },
   { href: '/analytics', label: 'Analytics', icon: ChartIcon },
-  { href: '/admin', label: 'Admin', icon: CogIcon },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 bg-slate-900/80 border-r border-slate-700/40 flex flex-col shrink-0">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-slate-700/40">
+    <aside className="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
+      <div className="h-16 flex items-center px-5 border-b border-gray-100">
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
             PP
           </div>
           <div>
-            <div className="text-sm font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
+            <div className="text-sm font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
               PuckProspects
             </div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-widest">
-              Analytics
-            </div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-widest">Analytics</div>
           </div>
         </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1">
+      <nav className="flex-1 py-4 px-3 space-y-0.5">
         {NAV_ITEMS.map((item) => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           return (
@@ -43,8 +38,8 @@ export default function Sidebar() {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                 isActive
-                  ? 'bg-blue-600/15 text-blue-400 border border-blue-500/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-50'
               }`}
             >
               <item.icon className="w-4 h-4" />
@@ -54,20 +49,14 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-slate-700/40">
-        <div className="text-[10px] text-slate-600 uppercase tracking-wider">
-          Season 2025-26
-        </div>
-        <div className="text-[10px] text-slate-600 mt-1">
-          27 leagues tracked
-        </div>
+      <div className="px-4 py-4 border-t border-gray-100">
+        <div className="text-[10px] text-gray-400 uppercase tracking-wider">Season 2025-26</div>
+        <div className="text-[10px] text-gray-400 mt-0.5">18 leagues tracked</div>
       </div>
     </aside>
   );
 }
 
-// Inline SVG icons to avoid heavy icon library import
 function LayoutIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -75,7 +64,6 @@ function LayoutIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
 function TrophyIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -83,7 +71,6 @@ function TrophyIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
 function ScaleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -91,19 +78,10 @@ function ScaleIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
 function ChartIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" />
-    </svg>
-  );
-}
-
-function CogIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" />
     </svg>
   );
 }
