@@ -9,7 +9,9 @@
     "lint": "next lint",
     "db:migrate": "node database/migrate.js",
     "db:seed": "node database/seed.js",
-    "db:reset": "node database/reset.js"
+    "db:reset": "node database/reset.js",
+    "pipeline:ingest": "npx tsx src/lib/pipeline/jobs/ingest-all.ts",
+    "pipeline:schedule": "npx tsx src/lib/pipeline/jobs/scheduler.ts"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
