@@ -3,31 +3,33 @@
 // ============================================================================
 // Central registry for all data source connectors. The ETL engine and
 // ingestion service use this to discover and instantiate connectors.
-//
-// To register a new connector:
-//   import { registry } from './registry';
-//   import { MyConnector } from './scrapers/my-connector';
-//   registry.register('my_source', () => new MyConnector());
 // ============================================================================
 
 import { IConnector } from './base';
-import { SourceDescriptor } from '../domain/models';
+import { SourceDescriptor, ConnectorMaturity, ConnectorTier } from '../domain/models';
 
 type ConnectorFactory = () => IConnector;
 
 class ConnectorRegistry {
   private factories = new Map<string, ConnectorFactory>();
+  private _initialized = false;
 
   /** Register a connector factory by source name */
   register(sourceName: string, factory: ConnectorFactory): void {
-    if (this.factories.has(sourceName)) {
-      console.warn(`[Registry] Overwriting connector: ${sourceName}`);
-    }
     this.factories.set(sourceName, factory);
+  }
+
+  /** Ensure all connectors are loaded (lazy initialization) */
+  private ensureInitialized(): void {
+    if (this._initialized) return;
+    this._initialized = true;
+    // Trigger dynamic imports of all connector modules
+    loadAllConnectors();
   }
 
   /** Create a connector instance by source name */
   create(sourceName: string): IConnector {
+    this.ensureInitialized();
     const factory = this.factories.get(sourceName);
     if (!factory) {
       throw new Error(`[Registry] Unknown connector: ${sourceName}. Available: ${this.listNames().join(', ')}`);
@@ -37,11 +39,13 @@ class ConnectorRegistry {
 
   /** Check if a connector is registered */
   has(sourceName: string): boolean {
+    this.ensureInitialized();
     return this.factories.has(sourceName);
   }
 
   /** List all registered connector names */
   listNames(): string[] {
+    this.ensureInitialized();
     return Array.from(this.factories.keys());
   }
 
@@ -54,7 +58,37 @@ class ConnectorRegistry {
   getForLeague(leagueCode: string): IConnector[] {
     return this.listNames()
       .map(name => this.create(name))
-      .filter(c => c.descriptor.league === leagueCode);
+      .filter(c => c.descriptor.league === leagueCode || (c.descriptor.leaguesCovered || []).includes(leagueCode));
+  }
+
+  /** Get connectors by maturity level */
+  getByMaturity(maturity: ConnectorMaturity): IConnector[] {
+    return this.listNames()
+      .map(name => this.create(name))
+      .filter(c => c.descriptor.maturity === maturity);
+  }
+
+  /** Get connectors by tier */
+  getByTier(tier: ConnectorTier): IConnector[] {
+    return this.listNames()
+      .map(name => this.create(name))
+      .filter(c => c.descriptor.tier === tier);
+  }
+
+  /** Get a summary of all connectors grouped by maturity */
+  getSummary(): Record<ConnectorMaturity, Array<{ name: string; league: string; type: string }>> {
+    const summary: Record<string, Array<{ name: string; league: string; type: string }>> = {
+      implemented: [],
+      partial: [],
+      scaffolded: [],
+      future: [],
+      blocked: [],
+    };
+    for (const name of this.listNames()) {
+      const d = this.create(name).descriptor;
+      summary[d.maturity].push({ name: d.sourceName, league: d.league, type: d.sourceType });
+    }
+    return summary as Record<ConnectorMaturity, Array<{ name: string; league: string; type: string }>>;
   }
 
   /** Unregister a connector (useful for testing) */
@@ -65,6 +99,13 @@ class ConnectorRegistry {
   /** Clear all registered connectors (useful for testing) */
   clear(): void {
     this.factories.clear();
+    this._initialized = false;
+  }
+
+  /** Count of registered connectors */
+  get size(): number {
+    this.ensureInitialized();
+    return this.factories.size;
   }
 }
 
@@ -72,19 +113,46 @@ class ConnectorRegistry {
 export const registry = new ConnectorRegistry();
 
 // ============================================================================
-// Auto-registration
+// Lazy loader — called once on first registry access
 // ============================================================================
-// Import connector modules here to auto-register them.
-// As connectors are built, add their imports below.
-//
-// Example:
-//   import './apis/ahl-connector';
-//   import './scrapers/ep-ohl-connector';
-//   import './enrichment/elite-prospects-enrichment';
-//
-// Each connector file should call registry.register() at module load time.
-// ============================================================================
+function loadAllConnectors(): void {
+  // Tier 1: API connectors
+  require('./apis/nhl-api-connector');
+  require('./apis/balldontlie-connector');
+  require('./apis/api-hockey-connector');
+  require('./apis/thesportsdb-connector');
+  require('./apis/morehockeystats-connector');
 
-// --- Connector imports will be added here as they are built ---
-// import './scrapers/ep-connector';
-// import './apis/ahl-connector';
+  // Tier 2: Scraping connectors — North America
+  require('./scrapers/ahl-connector');
+  require('./scrapers/echl-connector');
+  require('./scrapers/ohl-connector');
+  require('./scrapers/whl-connector');
+  require('./scrapers/qmjhl-connector');
+  require('./scrapers/ncaa-connector');
+  require('./scrapers/ushl-connector');
+  require('./scrapers/nahl-connector');
+
+  // Tier 2: Scraping connectors — Europe
+  require('./scrapers/shl-connector');
+  require('./scrapers/j20-connector');
+  require('./scrapers/liiga-connector');
+  require('./scrapers/khl-connector');
+  require('./scrapers/mhl-connector');
+  require('./scrapers/swiss-nl-connector');
+  require('./scrapers/del-connector');
+  require('./scrapers/czech-extraliga-connector');
+
+  // Tier 2: Development programs
+  require('./scrapers/usntdp-connector');
+  require('./scrapers/hockey-canada-connector');
+  require('./scrapers/bchl-connector');
+
+  // Tier 3: Enrichment
+  require('./enrichment/hockeydb-connector');
+  require('./enrichment/naturalstattrick-connector');
+  require('./enrichment/moneypuck-connector');
+
+  // Tier 2: Elite Prospects multi-league scraper
+  require('./scrapers/ep-connector');
+}

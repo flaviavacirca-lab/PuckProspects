@@ -56,5 +56,5 @@ export function resetPipelineConfig(): void {
 }
 
 // Re-export source config
-export { SOURCES, getEnabledSources, getSourcesForLeague, getSource } from './sources';
+export { SOURCES, getEnabledSources, getSourcesForLeague, getSource, getSourcesByTier, getSourcesByMaturity, getSourcesSummary } from './sources';
 export type { SourceConfig } from './sources';

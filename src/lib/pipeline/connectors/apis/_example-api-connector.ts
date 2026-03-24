@@ -41,6 +41,8 @@ export class ExampleApiConnector extends BaseConnector {
     sourceUrl: 'https://api.example.com/v1/stats',
     league: 'ahl',                // Which league this connector serves
     ingestionCadence: 'daily',
+    maturity: 'scaffolded',
+    tier: 1,
     knownLimitations: [
       'Requires API key',
       'Rate limited to 60 req/min',

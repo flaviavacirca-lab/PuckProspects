@@ -76,14 +76,14 @@ export class IngestionService {
     name: string;
     league: string;
     type: string;
+    maturity: string;
+    tier: number;
     registered: boolean;
   }> {
     const registeredNames = registry.listNames();
     const sources = getEnabledSources();
 
-    // Combine registered + configured (some may be configured but not yet implemented)
-    const all = new Map<string, { name: string; league: string; type: string; registered: boolean }>();
-    const registeredSet = new Set(registeredNames);
+    const all = new Map<string, { name: string; league: string; type: string; maturity: string; tier: number; registered: boolean }>();
 
     for (const name of registeredNames) {
       const connector = registry.create(name);
@@ -91,6 +91,8 @@ export class IngestionService {
         name,
         league: connector.descriptor.league,
         type: connector.descriptor.sourceType,
+        maturity: connector.descriptor.maturity,
+        tier: connector.descriptor.tier,
         registered: true,
       });
     }
@@ -101,6 +103,8 @@ export class IngestionService {
           name: source.name,
           league: source.league,
           type: source.type,
+          maturity: source.maturity,
+          tier: source.tier,
           registered: false,
         });
       }

@@ -22,6 +22,8 @@ export type {
   ConnectorResult,
   RawSourcePayload,
   PlayerIdentityLink,
+  ConnectorMaturity,
+  ConnectorTier,
 } from './domain/models';
 
 // Connector base
@@ -60,5 +62,5 @@ export { getHealthService, HealthService } from './services/health-service';
 export type { SourceHealth, PipelineHealth } from './services/health-service';
 
 // Config
-export { getPipelineConfig, getEnabledSources, getSource } from './config';
+export { getPipelineConfig, getEnabledSources, getSource, getSourcesByTier, getSourcesByMaturity, getSourcesSummary } from './config';
 export type { PipelineConfig, SourceConfig } from './config';

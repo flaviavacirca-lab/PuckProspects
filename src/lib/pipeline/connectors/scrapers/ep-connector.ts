@@ -63,6 +63,8 @@ export class EPLeagueConnector extends BaseConnector {
       sourceUrl: slug ? getEPStatsUrl(slug, season) : '',
       league: leagueCode,
       ingestionCadence: 'daily',
+      maturity: 'partial',
+      tier: 2,
       knownLimitations: [
         'No age/DOB data from stats page (requires player page scrape)',
         'No draft info from stats page',
@@ -272,8 +274,7 @@ export function createEPConnector(leagueCode: string, season?: string): EPLeague
 }
 
 // --- Auto-register all EP league connectors ---
-// Uncomment when ready to activate:
-//
-// for (const leagueCode of Object.keys(EP_LEAGUE_SLUGS)) {
-//   registry.register(`ep_${leagueCode}`, () => createEPConnector(leagueCode));
-// }
+// One connector per league that has an EP slug mapping.
+for (const leagueCode of Object.keys(EP_LEAGUE_SLUGS)) {
+  registry.register(`ep_${leagueCode}`, () => createEPConnector(leagueCode));
+}

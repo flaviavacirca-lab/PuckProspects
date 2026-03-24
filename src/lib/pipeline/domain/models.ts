@@ -15,17 +15,37 @@ export type SourceType = 'api' | 'scrape' | 'hybrid' | 'enrichment' | 'partial';
 
 export type IngestionCadence = 'realtime' | 'hourly' | 'daily' | 'weekly' | 'manual';
 
+/**
+ * Connector maturity level:
+ * - implemented: fully working, tested, producing real data
+ * - partial: fetches data but parsing/normalization incomplete
+ * - scaffolded: structure in place, fetch/parse stubs only
+ * - future: planned but not started
+ * - blocked: cannot proceed (site blocks scraping, API unavailable, etc.)
+ */
+export type ConnectorMaturity = 'implemented' | 'partial' | 'scaffolded' | 'future' | 'blocked';
+
+/** Connector tier for prioritization */
+export type ConnectorTier = 1 | 2 | 3;
+
 export interface SourceDescriptor {
   /** Unique identifier for this source, e.g. "elite_prospects", "ahl_api" */
   sourceName: string;
   sourceType: SourceType;
   sourceUrl: string;
+  /** League code, or '*' for multi-league/enrichment sources */
   league: string;
   ingestionCadence: IngestionCadence;
   /** Known gaps or limitations of this source */
   knownLimitations: string[];
   /** Which fields this source can provide */
   fieldCoverage: FieldCoverage;
+  /** How mature this connector is */
+  maturity: ConnectorMaturity;
+  /** Priority tier: 1=API, 2=core scraping, 3=enrichment */
+  tier: ConnectorTier;
+  /** Leagues this connector covers (for multi-league sources) */
+  leaguesCovered?: string[];
 }
 
 export interface FieldCoverage {
