@@ -51,6 +51,7 @@ export {
   createDefaultQuality,
   createEmptyPlayer,
   createEmptySkaterStats,
+  createEmptyGoalieStats,
 } from './core/normalization';
 
 // Validation

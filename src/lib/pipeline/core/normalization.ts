@@ -5,7 +5,7 @@
 // formats. Connectors use these in their normalize() methods.
 // ============================================================================
 
-import {
+import type {
   NormalizedPlayer,
   NormalizedSkaterStats,
   NormalizedGoalieStats,
@@ -288,6 +288,37 @@ export function createEmptySkaterStats(sourceName: string, league: string, seaso
     gwGoals: null,
     hits: null,
     blockedShots: null,
+    snapshotDate: todaySnapshot(),
+    lastUpdated: new Date(),
+    dataQuality: createDefaultQuality(),
+    rawPayload: null,
+    customFields: {},
+  };
+}
+
+/**
+ * Create a template NormalizedGoalieStats with all fields set to 0/null.
+ */
+export function createEmptyGoalieStats(sourceName: string, league: string, season: string): NormalizedGoalieStats {
+  return {
+    playerId: null,
+    sourceName,
+    sourceUrl: null,
+    season,
+    league,
+    teamName: null,
+    gamesPlayed: 0,
+    gamesStarted: null,
+    wins: 0,
+    losses: 0,
+    otl: null,
+    shutouts: null,
+    goalsAgainst: null,
+    goalsAgainstAvg: null,
+    saves: null,
+    shotsAgainst: null,
+    savePct: null,
+    minutesPlayed: null,
     snapshotDate: todaySnapshot(),
     lastUpdated: new Date(),
     dataQuality: createDefaultQuality(),
