@@ -57,11 +57,23 @@ export {
 // Validation
 export { validateBatch, validatePlayer, validateSkaterStats, validateGoalieStats } from './core/validation';
 
+// Logging
+export { createLogger, getRecentLogs } from './core/logger';
+export type { LogLevel, LogEntry } from './core/logger';
+
 // Services
 export { getIngestionService, IngestionService } from './services/ingestion-service';
 export { getHealthService, HealthService } from './services/health-service';
-export type { SourceHealth, PipelineHealth } from './services/health-service';
+export type { SourceHealth, PipelineHealth, IngestionRunSummary, FlaggedMatchSummary } from './services/health-service';
+
+// Identity resolution
+export { PlayerIdentityResolver, InMemoryIdentityStore } from './identity';
+export type { CanonicalPlayer, ResolvedIdentity, FlaggedMatch, IdentityStore } from './identity';
 
 // Config
-export { getPipelineConfig, getEnabledSources, getSource, getSourcesByTier, getSourcesByMaturity, getSourcesSummary } from './config';
+export { getPipelineConfig, getEnabledSources, getSource, getSourcesByTier, getSourcesByMaturity, getSourcesSummary, SOURCES } from './config';
 export type { PipelineConfig, SourceConfig } from './config';
+
+// Persistence
+export { persistWithIdentityResolution } from './core/persistence';
+export type { PersistenceResult } from './core/persistence';
