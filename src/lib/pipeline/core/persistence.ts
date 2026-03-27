@@ -426,15 +426,27 @@ export async function markConnectorFailure(connectorName: string): Promise<void>
 
 // --- Batch persistence (wraps all writes in a transaction) ---
 
+export interface PersistenceResult {
+  inserted: number;
+  updated: number;
+  skipped: number;
+  linked: number;
+  flagged: number;
+  created: number;
+}
+
 export async function persistConnectorResult(result: {
   players: NormalizedPlayer[];
   skaterStats: NormalizedSkaterStats[];
   goalieStats: NormalizedGoalieStats[];
-}): Promise<{ inserted: number; updated: number; skipped: number }> {
+}): Promise<PersistenceResult> {
   const client = await pool.connect();
   let inserted = 0;
   let updated = 0;
   let skipped = 0;
+  let linked = 0;
+  let flagged = 0;
+  let created = 0;
 
   try {
     await client.query('BEGIN');
@@ -446,8 +458,8 @@ export async function persistConnectorResult(result: {
     for (const player of result.players) {
       try {
         const res = await upsertPlayer(player, client);
-        if (res.action === 'inserted') inserted++;
-        else if (res.action === 'updated') updated++;
+        if (res.action === 'inserted') { inserted++; created++; }
+        else if (res.action === 'updated') { updated++; linked++; }
         else skipped++;
 
         // Map source IDs to internal ID
@@ -485,8 +497,6 @@ export async function persistConnectorResult(result: {
             for (const [source, sourceId] of Object.entries(player.sourceIds)) {
               const key = `${source}:${sourceId}`;
               if (playerIdMap.has(key) && player.normalizedName) {
-                // Match stat to player by name (stats don't carry source IDs directly)
-                // This is a simple approach; real matching uses identity resolution
                 playerId = playerIdMap.get(key) || null;
               }
             }
@@ -534,5 +544,109 @@ export async function persistConnectorResult(result: {
     client.release();
   }
 
-  return { inserted, updated, skipped };
+  return { inserted, updated, skipped, linked, flagged, created };
+}
+
+/**
+ * Persist connector results using the identity resolver for smart matching.
+ * This is the production path that handles cross-source player resolution.
+ */
+export async function persistWithIdentityResolution(
+  result: {
+    players: NormalizedPlayer[];
+    skaterStats: NormalizedSkaterStats[];
+    goalieStats: NormalizedGoalieStats[];
+  },
+  resolver: import('../identity/resolver').PlayerIdentityResolver
+): Promise<PersistenceResult> {
+  let inserted = 0;
+  let updated = 0;
+  let skipped = 0;
+  let linked = 0;
+  let flagged = 0;
+  let created = 0;
+
+  // Map: sourceName:sourceId → internalId (for linking stats)
+  const playerIdMap = new Map<string, number>();
+
+  // Resolve and persist players
+  for (const player of result.players) {
+    try {
+      const { internalId, resolution } = await resolver.resolveAndLink(player);
+
+      switch (resolution.action) {
+        case 'link':
+          linked++;
+          updated++;
+          break;
+        case 'flag':
+          flagged++;
+          updated++; // Still linked, but flagged for review
+          break;
+        case 'create':
+          created++;
+          inserted++;
+          break;
+      }
+
+      // Map source IDs to internal ID
+      for (const [source, sourceId] of Object.entries(player.sourceIds)) {
+        playerIdMap.set(`${source}:${sourceId}`, internalId);
+      }
+      if (player.normalizedName) {
+        playerIdMap.set(`name:${player.normalizedName}`, internalId);
+      }
+
+      log.debug('Player resolved', {
+        name: player.fullName,
+        action: resolution.action,
+        internalId,
+        confidence: resolution.confidence,
+      });
+    } catch (err) {
+      log.warn('Failed to resolve/persist player', { name: player.fullName, error: String(err) });
+      skipped++;
+    }
+  }
+
+  // Stats persistence follows same pattern as basic persistence
+  for (const stat of result.skaterStats) {
+    try {
+      let playerId = stat.playerId;
+      if (!playerId) {
+        for (const player of result.players) {
+          for (const [source, sourceId] of Object.entries(player.sourceIds)) {
+            const key = `${source}:${sourceId}`;
+            if (playerIdMap.has(key)) {
+              playerId = playerIdMap.get(key) || null;
+            }
+          }
+        }
+      }
+      if (!playerId) { skipped++; continue; }
+      const res = await upsertSkaterStats(stat, playerId);
+      if (res.action === 'inserted') inserted++;
+      else if (res.action === 'updated') updated++;
+      else skipped++;
+    } catch (err) {
+      log.warn('Failed to upsert skater stats', { error: String(err) });
+      skipped++;
+    }
+  }
+
+  for (const stat of result.goalieStats) {
+    try {
+      const playerId = stat.playerId;
+      if (!playerId) { skipped++; continue; }
+      const res = await upsertGoalieStats(stat, playerId);
+      if (res.action === 'inserted') inserted++;
+      else if (res.action === 'updated') updated++;
+      else skipped++;
+    } catch (err) {
+      log.warn('Failed to upsert goalie stats', { error: String(err) });
+      skipped++;
+    }
+  }
+
+  return { inserted, updated, skipped, linked, flagged, created };
 }

@@ -71,3 +71,26 @@ ALTER TABLE ingestion_log ADD COLUMN IF NOT EXISTS records_skipped INTEGER DEFAU
 ALTER TABLE ingestion_log ADD COLUMN IF NOT EXISTS warnings JSONB;
 ALTER TABLE ingestion_log ADD COLUMN IF NOT EXISTS phase VARCHAR(20);
 ALTER TABLE ingestion_log ADD COLUMN IF NOT EXISTS raw_payload_id INTEGER;
+
+-- Flagged identity matches (uncertain matches needing human review)
+CREATE TABLE IF NOT EXISTS flagged_identity_matches (
+    id SERIAL PRIMARY KEY,
+    source_name VARCHAR(50) NOT NULL,
+    source_player_id VARCHAR(100),
+    source_full_name TEXT NOT NULL,
+    source_normalized_name TEXT NOT NULL,
+    source_dob DATE,
+    source_league VARCHAR(20),
+    candidates JSONB NOT NULL DEFAULT '[]',           -- array of {internalId, normalizedName, confidence, method}
+    reason VARCHAR(30) NOT NULL,                      -- 'ambiguous_match', 'low_confidence', 'multiple_candidates', 'dob_mismatch'
+    best_confidence NUMERIC(3,2),
+    resolution VARCHAR(20) DEFAULT 'pending',         -- 'pending', 'linked', 'new_player', 'dismissed'
+    resolved_by VARCHAR(50),                          -- admin username
+    resolved_internal_player_id INTEGER REFERENCES players(id),
+    flagged_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_flagged_matches_status ON flagged_identity_matches(resolution);
+CREATE INDEX idx_flagged_matches_source ON flagged_identity_matches(source_name);
+CREATE INDEX idx_flagged_matches_league ON flagged_identity_matches(source_league);

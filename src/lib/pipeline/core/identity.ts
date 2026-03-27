@@ -1,31 +1,47 @@
 // ============================================================================
-// Player Identity Resolution
+// Player Identity Resolution — Core Pipeline Integration
 // ============================================================================
-// Resolves whether a player record from a source matches an existing player
-// in our database. Uses a cascade of matching strategies from high to low
-// confidence.
+// Factory for creating identity resolvers in the pipeline context.
+// The resolver uses the identity module's fuzzy matching, confidence scoring,
+// and cascading strategies to link players across sources.
 // ============================================================================
 
 import pool from '@/lib/db';
 import { NormalizedPlayer, PlayerIdentityLink } from '../domain/models';
+import { PlayerIdentityResolver } from '../identity/resolver';
+import { PostgresIdentityStore, InMemoryIdentityStore } from '../identity/stores';
+import { normalizeForMatching } from '../identity/matching';
 import { createLogger } from './logger';
 
 const log = createLogger('Identity');
 
-export interface IdentityMatch {
-  internalPlayerId: number;
-  confidence: number;
-  method: PlayerIdentityLink['matchMethod'];
+// Re-export for convenience
+export { PlayerIdentityResolver } from '../identity/resolver';
+export { InMemoryIdentityStore, PostgresIdentityStore } from '../identity/stores';
+export { normalizeForMatching as normalizeNameForMatching } from '../identity/matching';
+
+/**
+ * Create a resolver backed by the pipeline database.
+ * Falls back to in-memory store if DB pool is unavailable.
+ */
+export function createResolver(pgPool?: import('pg').Pool): PlayerIdentityResolver {
+  const effectivePool = pgPool || pool;
+  try {
+    return new PlayerIdentityResolver(new PostgresIdentityStore(effectivePool));
+  } catch {
+    log.warn('Could not create PostgreSQL identity store, falling back to in-memory');
+    return new PlayerIdentityResolver(new InMemoryIdentityStore());
+  }
 }
 
 /**
- * Try to find an existing player that matches the given normalized player.
- * Returns null if no match is found (new player).
+ * Legacy: resolve player identity via DB cascade (kept for backward compatibility).
+ * Prefer using PlayerIdentityResolver for new code.
  */
 export async function resolvePlayerIdentity(
   player: NormalizedPlayer
-): Promise<IdentityMatch | null> {
-  // Strategy 1: Source ID match (highest confidence)
+): Promise<{ internalPlayerId: number; confidence: number; method: PlayerIdentityLink['matchMethod'] } | null> {
+  // Strategy 1: Source ID match
   for (const [source, sourceId] of Object.entries(player.sourceIds)) {
     const result = await pool.query(
       `SELECT internal_player_id, confidence FROM player_identity_links
@@ -56,7 +72,7 @@ export async function resolvePlayerIdentity(
     }
   }
 
-  // Strategy 3: Exact normalized name + same league (weaker)
+  // Strategy 3: Exact normalized name + same league
   if (player.normalizedName && player.league) {
     const result = await pool.query(
       `SELECT p.id FROM players p
@@ -73,45 +89,12 @@ export async function resolvePlayerIdentity(
     }
   }
 
-  // Strategy 4: Check alternate names
-  if (player.normalizedName) {
-    const result = await pool.query(
-      `SELECT id FROM players
-       WHERE $1 = ANY(
-         SELECT unnest(alternate_names)
-       )
-       OR normalized_name = $1`,
-      [player.normalizedName]
-    );
-    if (result.rows.length === 1) {
-      return {
-        internalPlayerId: result.rows[0].id,
-        confidence: 0.7,
-        method: 'fuzzy_name_dob',
-      };
-    }
-  }
-
   log.debug('No identity match found', { name: player.fullName, league: player.league });
   return null;
 }
 
 /**
- * Normalize a name for identity matching.
- * Strips accents, lowercases, removes non-alpha characters.
- */
-export function normalizeNameForMatching(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z\s-]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Link a player record from a source to our internal player.
+ * Legacy: create an identity link in the DB.
  */
 export async function createIdentityLink(link: PlayerIdentityLink): Promise<void> {
   await pool.query(
