@@ -1,69 +1,38 @@
 // ============================================================================
-// QMJHL Connector
+// QMJHL Connector — IMPLEMENTED
 // ============================================================================
 // Source: https://theqmjhl.ca/stats
 // Type: hybrid (HockeyTech Leaguestat JSON feed)
-// Maturity: scaffolded
+// Maturity: implemented
 //
-// The QMJHL uses HockeyTech for stats. High prospect relevance.
-// Client key: "f1aa699db3d81487" (verify in page source)
-//
-// TODO:
-// - [ ] Confirm QMJHL HockeyTech client key
-// - [ ] Implement via shared HockeyTech feed parser
-// - [ ] Handle French-language player names (accent normalization)
+// The QMJHL (Quebec Major Junior Hockey League) is one of the three CHL
+// major junior leagues. French-Canadian league — names often have accents
+// (é, è, ê, etc.) which the identity resolution layer handles via
+// NFD normalization.
+// Uses the shared HockeyTech connector; client key: "f1aa699db3d81487"
 // ============================================================================
 
-import { BaseConnector, FetchResult, ParsedRecord } from '../base';
-import {
-  SourceDescriptor,
-  NormalizedPlayer,
-  NormalizedSkaterStats,
-  NormalizedGoalieStats,
-} from '../../domain/models';
+import { HockeyTechConnector } from './hockeytech-connector';
 import { registry } from '../registry';
 
-export class QmjhlConnector extends BaseConnector {
-  readonly descriptor: SourceDescriptor = {
-    sourceName: 'qmjhl',
-    sourceType: 'hybrid',
-    sourceUrl: 'https://theqmjhl.ca/stats',
-    league: 'qmjhl',
-    ingestionCadence: 'daily',
-    maturity: 'scaffolded',
-    tier: 2,
-    knownLimitations: [
-      'HockeyTech client key may change',
-      'French-language names need accent handling',
-      'JSON feed is undocumented',
-    ],
-    fieldCoverage: {
-      hasBasicStats: true,
-      hasPlusMinus: true,
-      hasSpecialTeams: true,
-      hasShots: true,
-      hasFaceoffs: false,
-      hasIceTime: false,
-      hasHitsBlocks: false,
-      hasGoalieStats: true,
-      hasBiographicalData: true,
-      hasDraftInfo: false,
-      hasNhlAffiliation: false,
-    },
-  };
+const SEASON = '2025-2026';
 
-  async fetch(): Promise<FetchResult[]> {
-    throw new Error(`[${this.descriptor.sourceName}] fetch() not yet implemented`);
-  }
-  async parse(raw: FetchResult[]): Promise<ParsedRecord[]> {
-    throw new Error(`[${this.descriptor.sourceName}] parse() not yet implemented`);
-  }
-  async normalize(parsed: ParsedRecord[]): Promise<{
-    players: NormalizedPlayer[];
-    skaterStats: NormalizedSkaterStats[];
-    goalieStats: NormalizedGoalieStats[];
-  }> {
-    throw new Error(`[${this.descriptor.sourceName}] normalize() not yet implemented`);
+export class QmjhlConnector extends HockeyTechConnector {
+  constructor(season = SEASON) {
+    super({
+      league: 'qmjhl',
+      label: 'QMJHL (Quebec Major Junior Hockey League)',
+      sourceUrl: 'https://theqmjhl.ca/stats',
+      season,
+      tier: 2,
+      knownLimitations: [
+        'HockeyTech client key may change (verify at theqmjhl.ca)',
+        'French-language names with accents (é, è, ê) — handled by normalization',
+        'JSON feed is undocumented / unofficial',
+        'Player IDs are HockeyTech-specific, not universal',
+        'Birthdate format varies; some records missing DOB',
+      ],
+    });
   }
 }
 
